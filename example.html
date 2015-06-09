@@ -13,13 +13,13 @@
 	<script src="./src/three.min.js"></script>
 	<script src="./src/OrbitControls.js"></script>
 	<script src="./src/cannon.min.js"></script>
-	<script src="./src/cannon.demo.js"></script>
+	<!-- <script src="./src/cannon.demo.js"></script>
 	<script src="./src/Detector.js"></script>
 	<script src="./src/smoothie.js"></script>
 	<script src="./src/Stats.js"></script>
 	<script src="./src/TrackballControls.js"></script>
 	<script src="./src/dat.gui.js"></script>
-	<script src="./src/scenejs.js"></script>
+	<script src="./src/scenejs.js"></script> -->
 	<script>
 	requestAnimationFrame = window.requestAnimationFrame ||
 													window.mozRequestAnimationFrame ||
@@ -28,12 +28,12 @@
 	window.requestAnimationFrame = requestAnimationFrame;
 
 	window.addEventListener("DOMContentLoaded", function(){
-		var camera,scene,renderer,groundBody,world,
+		var camera,scene,renderer,groundBody,hfShape,world,
 				canvas     = document.getElementById("canvas"),
 				width      = canvas.clientWidth,
 				heigth     = window.innerHeight,
-				planeW     = 300,
-				planeH     = 300,
+				planeX     = 50,
+				planeY     = 50,
 				cubeSize   = 7,
 				sphereSize = 1,
 				sphereArr  = [],
@@ -68,10 +68,30 @@
 			var ground,groundBody;
 			ground = new CANNON.Plane();//　地面の生成
 			groundBody = new CANNON.Body( {mass: 0} );// 質量0の剛体を生成
-			groundBody.force.set( new CANNON.Vec3( 1, 1, 1 ));
 			groundBody.addShape(ground);// bodyに追加
 			groundBody.quaternion.setFromAxisAngle( new CANNON.Vec3( 1, 0, 0 ), -Math.PI / 2 );// x軸から90度回転
 			world.add( groundBody );// worldに剛体を追加
+
+			// var matrix = [];
+			// for (var i = 0; i < planeX; i++) {
+			// 	matrix.push([]);
+			// 	for (var j = 0; j < planeY; j++) {
+			// 		// var height = 0;
+			// 		var height = Math.cos(i/planeX * Math.PI * 2)*Math.cos(j/planeY * Math.PI * 2) + 2;
+			// 		if(i===0 || i === planeX-1 || j===0 || j === planeY-1) height = 3;
+			// 		matrix[i].push(height);
+			// 	}
+			// }
+			// hfShape = new CANNON.Heightfield(matrix, {
+			// 	elementSize: 1
+			// });
+			// console.log(hfShape);
+			// var hfBody = new CANNON.Body({ mass: 0 });
+			// hfBody.addShape(hfShape);
+			// hfBody.quaternion.setFromAxisAngle( new CANNON.Vec3( 1, 0, 0 ), -Math.PI / 2 );
+			// hfBody.position.set(-planeX * hfShape.elementSize / 2, -20, -10);
+			// // hfBody.position.set(-planeX * hfShape.elementSize / 2, 0, 0);
+			// world.addBody(hfBody);
 
 			/*
 			 * 物理演算対象の剛体[キューブ]を生成
@@ -101,7 +121,7 @@
 			sphereBody = new CANNON.Body( {mass: 1} );// 質量1の剛体を生成
 			sphereBody.addShape( sphere );// bodyに追加
 			sphereBody.position.x = Math.random() * 20 - 10;
-			sphereBody.position.y = 80;
+			sphereBody.position.y = 40;
 			sphereBody.position.z = Math.random() * 20 - 10;
 			world.add(sphereBody);
 			return sphereBody;
@@ -124,7 +144,7 @@
 			 * 地面
 			*/
 			var planeGeo,planeMaterial,planeMesh,texture;
-			planeGeo = new THREE.PlaneGeometry( planeW, planeH, 16, 16 );// ジオメトリーの作成
+			planeGeo = new THREE.PlaneGeometry( planeX, planeY, 16, 16 );// ジオメトリーの作成
 			// for(var i = 0;i < planeGeo.vertices.length;i++){// ジオメトリの頂点分ループし、z方向の値を変更する
 			// 	planeGeo.vertices[i].z = Math.random() * 10 - 10;
 			// }
@@ -133,6 +153,55 @@
 			planeMesh            = new THREE.Mesh( planeGeo, planeMaterial );// メッシュの作成
 			planeMesh.rotation.x = -Math.PI / 2;// x軸を-90度回転
 			scene.add( planeMesh );// メッシュをシーンに追加
+
+			// var geometry = new THREE.Geometry();
+			// var geometry = new THREE.PlaneGeometry( planeX, planeY, 16, 16 );
+			// // for(var i = 0;i < geometry.vertices.length;i++){// ジオメトリの頂点分ループし、z方向の値を変更する
+			// // 	geometry.vertices[i].z = Math.random() * 10 - 10;
+			// // }
+   //    var v0 = new CANNON.Vec3();
+   //    var v1 = new CANNON.Vec3();
+   //    var v2 = new CANNON.Vec3();
+   //    for (var xi = 0; xi < hfShape.data.length - 1; xi++) {
+   //        for (var yi = 0; yi < hfShape.data[xi].length - 1; yi++) {
+   //            for (var k = 0; k < 2; k++) {
+   //                hfShape.getConvexTrianglePillar(xi, yi, k===0);
+   //                v0.copy(hfShape.pillarConvex.vertices[0]);
+   //                v1.copy(hfShape.pillarConvex.vertices[1]);
+   //                v2.copy(hfShape.pillarConvex.vertices[2]);
+   //                v0.vadd(hfShape.pillarOffset, v0);
+   //                v1.vadd(hfShape.pillarOffset, v1);
+   //                v2.vadd(hfShape.pillarOffset, v2);
+   //                geometry.vertices.push(
+   //                    new THREE.Vector3(v0.x, v0.y, v0.z),
+   //                    new THREE.Vector3(v1.x, v1.y, v1.z),
+   //                    new THREE.Vector3(v2.x, v2.y, v2.z)
+   //                );
+   //                var i = geometry.vertices.length - 3;
+   //                geometry.faces.push(new THREE.Face3(i, i+1, i+2));
+   //            }
+   //        }
+   //    }
+   //    console.log(geometry);
+   //    geometry.computeBoundingSphere();
+   //    geometry.computeFaceNormals();
+   //    // var mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial( { color: 0xdddddd } ));
+   //    // mesh.rotation.x = -Math.PI / 2;
+   //    // scene.add(mesh);
+   //    // What geometry should be used?
+   //    var geometry = new THREE.PlaneGeometry(10, 10, 4, 4);
+   //    var mesh = new THREE.Object3D();
+   //    var submesh = new THREE.Object3D();
+   //    var ground = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: 0xdddddd } ) );
+   //    ground.scale.set(100, 100, 100);
+   //    ground.rotation.x = -Math.PI / 2;
+   //    submesh.add(ground);
+
+   //    ground.castShadow = true;
+   //    ground.receiveShadow = true;
+
+   //    mesh.add(submesh);
+   //    scene.add(mesh);
 
 			/*
 			 * キューブ
