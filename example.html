@@ -13,13 +13,6 @@
 	<script src="./src/three.min.js"></script>
 	<script src="./src/OrbitControls.js"></script>
 	<script src="./src/cannon.min.js"></script>
-	<!-- <script src="./src/cannon.demo.js"></script>
-	<script src="./src/Detector.js"></script>
-	<script src="./src/smoothie.js"></script>
-	<script src="./src/Stats.js"></script>
-	<script src="./src/TrackballControls.js"></script>
-	<script src="./src/dat.gui.js"></script>
-	<script src="./src/scenejs.js"></script> -->
 	<script>
 	requestAnimationFrame = window.requestAnimationFrame ||
 													window.mozRequestAnimationFrame ||
@@ -49,7 +42,7 @@
 				sphere: createSphere()
 			});
 			countPhy++;
-			if(countPhy === 200) clearInterval(cubeInterval);
+			if(countPhy === 300) clearInterval(cubeInterval);
 		},100);
 
 		/**
@@ -59,19 +52,11 @@
 			world = new CANNON.World();// worldを生成
 			world.broadphase = new CANNON.NaiveBroadphase();// 衝突している可能性のある剛体を見つける
 			world.gravity.set( 0, -9.82, 0 );// 重力の設定
-			// world.solver.iterations = 100;
-			world.solver.tolerance = 0.001;
+			world.solver.tolerance = 0.01;
 			
 			/*
 			 * 物理演算対象の剛体[地面]を生成
 			*/
-			// var ground,groundBody;
-			// ground = new CANNON.Plane();//　地面の生成
-			// groundBody = new CANNON.Body( {mass: 0} );// 質量0の剛体を生成
-			// groundBody.addShape(ground);// bodyに追加
-			// groundBody.quaternion.setFromAxisAngle( new CANNON.Vec3( 1, 0, 0 ), -Math.PI / 2 );// x軸から90度回転
-			// world.add( groundBody );// worldに剛体を追加
-
 			phyGround = new CANNON.Body({mass: 0});
 			var matrix = [];
 			for (var i = 0; i < planeX; i++) {
@@ -85,14 +70,13 @@
 			phyGround.addShape(new CANNON.Heightfield(matrix, {
 				elementSize: planeX*2 / planeX
 			}));
-			// X軸に90度回転
+			// X軸を90度回転
 			phyGround.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
 			phyGround.position.y = -1;
 			phyGround.position.x = -planeX;
 			phyGround.position.z = planeX;
 			// 世界に追加
 			world.add(phyGround);
-
 
 			/*
 			 * 物理演算対象の剛体[キューブ]を生成
@@ -106,8 +90,8 @@
 					z = z+space;
 					x = -space;
 				}
-				phyCubeBody = new CANNON.Body( {mass: 0} );// 質量1の剛体を生成
-				phyCubeBody.addShape( phyCube );// bodyに追加
+				phyCubeBody = new CANNON.Body( {mass: 0} );// 質量0の剛体を生成
+				phyCubeBody.addShape( phyCube );// 形状の追加
 				phyCubeBody.position.set( x, 20, z );
 				phyCubeBody.quaternion.z = Math.random() * 1 - 0.5;
 				cubeData.push(phyCubeBody);
@@ -123,9 +107,9 @@
 			sphere = new CANNON.Sphere( sphereSize );// キューブの生成
 			sphereBody = new CANNON.Body( {mass: 1} );// 質量1の剛体を生成
 			sphereBody.addShape( sphere );// bodyに追加
-			sphereBody.position.x = Math.random() * 20 - 10;
-			sphereBody.position.y = 40;
-			sphereBody.position.z = Math.random() * 20 - 10;
+			sphereBody.position.x = Math.random() * 30 - 15;
+			sphereBody.position.y = 60;
+			sphereBody.position.z = Math.random() * 30 - 15;
 			world.add(sphereBody);
 			return sphereBody;
 		}
@@ -143,33 +127,12 @@
 			scene     = new THREE.Scene();// シーンの作成
 			// scene.fog = new THREE.FogExp2( 0xABABAB, 0.008 );// シーンにぼかしを追加
 
-			/*
-			 * 地面
-			*/
-			// var planeGeo,planeMaterial,planeMesh,texture;
-			// planeGeo = new THREE.PlaneGeometry( planeX, planeY, 16, 16 );// ジオメトリーの作成
-			// // for(var i = 0;i < planeGeo.vertices.length;i++){// ジオメトリの頂点分ループし、z方向の値を変更する
-			// // 	planeGeo.vertices[i].z = Math.random() * 10 - 10;
-			// // }
-			// texture              = THREE.ImageUtils.loadTexture( "./images/plane.png", {}, function(){renderer.render( scene, camera );} );// 画像の読み込み
-			// planeMaterial        = new THREE.MeshBasicMaterial({map: texture});// マテリアルの作成
-			// planeMesh            = new THREE.Mesh( planeGeo, planeMaterial );// メッシュの作成
-			// planeMesh.rotation.x = -Math.PI / 2;// x軸を-90度回転
-			// scene.add( planeMesh );// メッシュをシーンに追加
-
-			texture = THREE.ImageUtils.loadTexture( "./images/plane.png", {}, function(){renderer.render( scene, camera );} );// 画像の読み込み
-			// var material = new THREE.MeshPhongMaterial({
-   //        color: 0x000000,
-   //        specular: 0xffffff,
-   //        shininess: 0
-   //    });
+			var texture = THREE.ImageUtils.loadTexture( "./images/plane.png");// 画像の読み込み
 			var material = new THREE.MeshBasicMaterial({map: texture});
-      // var viewGround = new THREE.Object3D();
       var viewGround = new THREE.Object3D();
       for (var l = 0; l < phyGround.shapes.length; l++) {
           var shape = phyGround.shapes[l];
           var geometry = new THREE.Geometry();
-          // var geometry = new THREE.PlaneGeometry( planeX, planeY, 16, 16 );
           var v0 = new CANNON.Vec3();
           var v1 = new CANNON.Vec3();
           var v2 = new CANNON.Vec3();
@@ -189,9 +152,9 @@
                               new THREE.Vector3(v2.x, v2.y, v2.z)
                       );
                       geometry.faceVertexUvs[0].push([
-												new THREE.Vector2(  0,  1  ),    // TL
-												new THREE.Vector2(  0,  0  ),    // BL
-												new THREE.Vector2(  1,  1  )
+												new THREE.Vector2(0, 1),
+												new THREE.Vector2(0, 0),
+												new THREE.Vector2(1, 1)
 											]);
                       var i = geometry.vertices.length - 3;
                       geometry.faces.push(new THREE.Face3(i, i+1, i+2));
@@ -224,8 +187,8 @@
       /*
        * ライトの設定
       */
-      var light = new THREE.SpotLight(0x999999);
-      light.position.set(0, 1000, 1);
+      var light = new THREE.SpotLight(0xffffff);
+      light.position.set(200, 500, 200);
       light.castShadow = true;
       light.shadowMapWidth = 1024;
       light.shadowMapHeight = 1024;
@@ -239,20 +202,22 @@
 			/*
 			 * キューブ
 			*/
-			var cubeGeo,cubeMaterial,cubeMesh;
-			cubeGeo = new THREE.BoxGeometry( cubeSize, cubeSize, cubeSize );// ジオメトリーの作成
-			cubeMaterial        = new THREE.MeshBasicMaterial({color: 0xffffff});// マテリアルの作成
+			var cubeGeo,cubeMaterial,cubeMesh,
+					cubeTexture = THREE.ImageUtils.loadTexture( "./images/cube.png");// 画像の読み込み
+			cubeGeo = new THREE.Geometry();
+			cubeMeshItem = new THREE.Mesh(new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize));// メッシュの作成
 			for(var i = 0;i < 9;i++){
-				cubeMesh            = new THREE.Mesh( cubeGeo, cubeMaterial );// メッシュの作成
-				cubeMesh.rotation.z = cubeData[i].quaternion.z;
-				cubeMesh.position.set( cubeData[i].position.x, cubeData[i].position.y, cubeData[i].position.z );
-				cubeMesh.castShadow = true;
-				scene.add( cubeMesh );// メッシュをシーンに追加
+				cubeMeshItem.rotation.z = cubeData[i].quaternion.z;
+				cubeMeshItem.position.set( cubeData[i].position.x, cubeData[i].position.y, cubeData[i].position.z );
+				cubeMeshItem.castShadow = true;
+				THREE.GeometryUtils.merge(cubeGeo, cubeMeshItem);
 			}
+			cubeMaterial = new THREE.MeshLambertMaterial({map: cubeTexture});// マテリアルの作成
+			cubeMesh = new THREE.Mesh( cubeGeo, cubeMaterial );// メッシュの作成
+			scene.add( cubeMesh );// メッシュをシーンに追加
 
 			renderer = new THREE.WebGLRenderer({antialias:true});// レンダラーの作成
 			renderer.setSize( width, height );// 描画サイズ
-			// renderer.setClearColor( 0xffffff );// 描画カラー
 			renderer.setClearColor( 0xABABAB );// 描画カラー
 			renderer.shadowMapEnabled = true;
 			canvas.appendChild( renderer.domElement );// canvasに描画コンテンツを追加
@@ -265,10 +230,9 @@
 		function createSphere(){
 			var sphereGeo,sphereMaterial,sphereMesh;
 			sphereGeo = new THREE.SphereGeometry( sphereSize, 32, 32);
-			// sphereMaterial = new THREE.MeshBasicMaterial({color: 0xe57373});
-			sphereMaterial = new THREE.MeshLambertMaterial({side: THREE.DoubleSide,color: 0xe57373});
+			sphereMaterial = new THREE.MeshLambertMaterial({color: 0xffffff});
 			sphereMesh = new THREE.Mesh( sphereGeo,sphereMaterial );
-			// sphereMesh.castShadow = true;
+			sphereMesh.castShadow = true;
 			sphereMesh.receiveShadow = true; 
 			scene.add( sphereMesh );
 			return sphereMesh;
