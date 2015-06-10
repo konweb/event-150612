@@ -28,16 +28,16 @@
 	window.requestAnimationFrame = requestAnimationFrame;
 
 	window.addEventListener("DOMContentLoaded", function(){
-		var camera,scene,renderer,groundBody,phyGround,world,
+		var camera,scene,renderer,groundBody,world,
 				canvas     = document.getElementById("canvas"),
 				width      = canvas.clientWidth,
-				heigth     = window.innerHeight,
-				planeX     = 50,
-				planeY     = 50,
-				cubeSize   = 7,
-				sphereSize = 1,
-				sphereArr  = [],
-				countPhy = 0;
+				height     = window.innerHeight;
+
+		var planeX = 50,planeY = 50,
+				cubeSize = 7,sphereSize = 1,
+				sphereArr = [],cubeData = [],
+				countPhy = 0,
+				phyGround;
 
 		initPhy();
 		init();
@@ -78,11 +78,10 @@
 				matrix.push([]);
 				for (var j = 0; j < planeY; j++) {
 					var height = Math.cos(i / planeX * Math.PI * 5) * Math.cos(j/planeY * Math.PI * 5) * 2 + 2;
-					if(i===0 || i === planeX-1 || j===0 || j === planeY-1) height = 3;
+					if(i===0 || i === planeX-1 || j===0 || j === planeY-1) height = 0;
 					matrix[i].push(height);
 				}
 			}
-			console.log(matrix);
 			phyGround.addShape(new CANNON.Heightfield(matrix, {
 				elementSize: planeX*2 / planeX
 			}));
@@ -98,19 +97,21 @@
 			/*
 			 * 物理演算対象の剛体[キューブ]を生成
 			*/
-			var cube,cubeBody,
+			var phyCube,phyCubeBody,
 					space = 15,x = -space,z = -(space*2);
-			cube = new CANNON.Box( new CANNON.Vec3( cubeSize/2, cubeSize/2, cubeSize/2 ) );// キューブの生成
+
+			phyCube = new CANNON.Box( new CANNON.Vec3( cubeSize/2, cubeSize/2, cubeSize/2 ) );// キューブの生成
 			for(var i = 0;i < 9;i++){
 				if(i % 3 == 0){
 					z = z+space;
 					x = -space;
 				}
-				cubeBody = new CANNON.Body( {mass: 0} );// 質量1の剛体を生成
-				cubeBody.addShape( cube );// bodyに追加
-				cubeBody.position.set( x, 20, z );
-				cubeBody.quaternion.z = 1;
-				world.add(cubeBody);
+				phyCubeBody = new CANNON.Body( {mass: 0} );// 質量1の剛体を生成
+				phyCubeBody.addShape( phyCube );// bodyに追加
+				phyCubeBody.position.set( x, 20, z );
+				phyCubeBody.quaternion.z = Math.random() * 1 - 0.5;
+				cubeData.push(phyCubeBody);
+				world.add(phyCubeBody);
 				x = x+space;
 			}
 		}
@@ -134,8 +135,8 @@
 		*/
 		function init(){
 			// カメラの設定
-			camera = new THREE.PerspectiveCamera( 45, width/heigth, 1, 1000 );// カメラの作成
-			camera.position.set( 0, 10, 100 );// カメラの位置設定
+			camera = new THREE.PerspectiveCamera( 45, width/height, 1, 1000 );// カメラの作成
+			camera.position.set( 0, 50, 100 );// カメラの位置設定
 			controls = new THREE.OrbitControls(camera, canvas);
 			controls.addEventListener("change", render);
 
@@ -223,9 +224,14 @@
       /*
        * ライトの設定
       */
-      var light = new THREE.DirectionalLight(0x999999);
-      light.position.set(0, 100, 10);
+      var light = new THREE.SpotLight(0x999999);
+      light.position.set(0, 1000, 1);
       light.castShadow = true;
+      light.shadowMapWidth = 1024;
+      light.shadowMapHeight = 1024;
+      light.shadowCameraNear = 500;
+      light.shadowCameraFar = 4000;
+      light.shadowCameraFov = 30;
       scene.add(light);
       var pointhelper = new THREE.PointLightHelper(light, 1);
       scene.add(pointhelper);
@@ -233,25 +239,19 @@
 			/*
 			 * キューブ
 			*/
-			var cubeGeo,cubeMaterial,cubeMesh,
-					space = 15,x = -space,z = -(space*2);
+			var cubeGeo,cubeMaterial,cubeMesh;
 			cubeGeo = new THREE.BoxGeometry( cubeSize, cubeSize, cubeSize );// ジオメトリーの作成
+			cubeMaterial        = new THREE.MeshBasicMaterial({color: 0xffffff});// マテリアルの作成
 			for(var i = 0;i < 9;i++){
-				if(i % 3 == 0){
-					z = z+space;
-					x = -space;
-				}
-				cubeMaterial        = new THREE.MeshBasicMaterial({color: 0xffffff});// マテリアルの作成
 				cubeMesh            = new THREE.Mesh( cubeGeo, cubeMaterial );// メッシュの作成
-				cubeMesh.rotation.z = 1;
-				cubeMesh.position.set( x, 20, z );
+				cubeMesh.rotation.z = cubeData[i].quaternion.z;
+				cubeMesh.position.set( cubeData[i].position.x, cubeData[i].position.y, cubeData[i].position.z );
 				cubeMesh.castShadow = true;
 				scene.add( cubeMesh );// メッシュをシーンに追加
-				x = x+space;
 			}
 
-			renderer = new THREE.WebGLRenderer();// レンダラーの作成
-			renderer.setSize( width, heigth );// 描画サイズ
+			renderer = new THREE.WebGLRenderer({antialias:true});// レンダラーの作成
+			renderer.setSize( width, height );// 描画サイズ
 			// renderer.setClearColor( 0xffffff );// 描画カラー
 			renderer.setClearColor( 0xABABAB );// 描画カラー
 			renderer.shadowMapEnabled = true;
@@ -265,8 +265,11 @@
 		function createSphere(){
 			var sphereGeo,sphereMaterial,sphereMesh;
 			sphereGeo = new THREE.SphereGeometry( sphereSize, 32, 32);
-			sphereMaterial = new THREE.MeshNormalMaterial({shading: THREE.SmoothShading});
+			// sphereMaterial = new THREE.MeshBasicMaterial({color: 0xe57373});
+			sphereMaterial = new THREE.MeshLambertMaterial({side: THREE.DoubleSide,color: 0xe57373});
 			sphereMesh = new THREE.Mesh( sphereGeo,sphereMaterial );
+			// sphereMesh.castShadow = true;
+			sphereMesh.receiveShadow = true; 
 			scene.add( sphereMesh );
 			return sphereMesh;
 		}
@@ -286,54 +289,6 @@
 		function render(){
 			renderer.render( scene, camera );
 		}
-
-
-
-		// var demo = new CANNON.Demo();
-		//         demo.addScene("Heightfield", function () {
-		//             // Init world
-		//             var world = demo.getWorld();
-		//             world.gravity.set(0, 0, -10);
-		//             world.broadphase = new CANNON.NaiveBroadphase();
-		//             // Create a matrix of height values
-		//             var matrix = [];
-		//             var sizeX = 15,
-		//                 sizeY = 15;
-		//             for (var i = 0; i < sizeX; i++) {
-		//                 matrix.push([]);
-		//                 for (var j = 0; j < sizeY; j++) {
-		//                     var height = Math.cos(i/sizeX * Math.PI * 2)*Math.cos(j/sizeY * Math.PI * 2) + 2;
-		//                     if(i===0 || i === sizeX-1 || j===0 || j === sizeY-1)
-		//                         height = 3;
-		//                     matrix[i].push(height);
-		//                 }
-		//             }
-		//             // Create the heightfield
-		//             var hfShape = new CANNON.Heightfield(matrix, {
-		//                 elementSize: 1
-		//             });
-		//             var hfBody = new CANNON.Body({ mass: 0 });
-		//             hfBody.addShape(hfShape);
-		//             hfBody.position.set(-sizeX * hfShape.elementSize / 2, -20, -10);
-		//             world.addBody(hfBody);
-		//             demo.addVisual(hfBody);
-		//             // Add spheres
-		//             var mass = 1;
-		//             for(var i=0; i<sizeX - 1; i++){
-		//                 for (var j = 0; j < sizeY - 1; j++) {
-		//                     if(i===0 || i >= sizeX-2 || j===0 || j >= sizeY-2)
-		//                         continue;
-		//                     var sphereShape = new CANNON.Sphere(0.1);
-		//                     var sphereBody = new CANNON.Body({ mass: mass });
-		//                     sphereBody.addShape(sphereShape);
-		//                     sphereBody.position.set(0.25 + i, 0.25 + j, 3);
-		//                     sphereBody.position.vadd(hfBody.position, sphereBody.position);
-		//                     world.addBody(sphereBody);
-		//                     demo.addVisual(sphereBody);
-		//                 }
-		//             }
-		//         });
-		//       demo.start();
 	});
 	</script>
 </body>
