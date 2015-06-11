@@ -21,16 +21,16 @@
 	window.requestAnimationFrame = requestAnimationFrame;
 
 	window.addEventListener("DOMContentLoaded", function(){
-		var camera,scene,renderer,groundBody,world,
+		var camera,scene,renderer,
 				canvas     = document.getElementById("canvas"),
 				width      = canvas.clientWidth,
 				height     = window.innerHeight;
 
-		var planeX = 50,planeY = 50,
+		var world,phyGround,
+				planeX = 50,planeY = 50,
 				cubeSize = 7,sphereSize = 1,
 				sphereArr = [],cubeData = [],
-				countPhy = 0,
-				phyGround;
+				countPhy = 0;
 
 		initPhy();
 		init();
@@ -118,89 +118,94 @@
 		 * @return undefined
 		*/
 		function init(){
-			// カメラの設定
+			/* 
+			 * カメラの設定
+			*/
 			camera = new THREE.PerspectiveCamera( 45, width/height, 1, 1000 );// カメラの作成
 			camera.position.set( 0, 50, 100 );// カメラの位置設定
 			controls = new THREE.OrbitControls(camera, canvas);
 			controls.addEventListener("change", render);
 
-			scene     = new THREE.Scene();// シーンの作成
-			// scene.fog = new THREE.FogExp2( 0xABABAB, 0.008 );// シーンにぼかしを追加
-
-			var texture = THREE.ImageUtils.loadTexture( "./images/plane.png");// 画像の読み込み
-			var material = new THREE.MeshBasicMaterial({map: texture});
-      var viewGround = new THREE.Object3D();
-      for (var l = 0; l < phyGround.shapes.length; l++) {
-          var shape = phyGround.shapes[l];
-          var geometry = new THREE.Geometry();
-          var v0 = new CANNON.Vec3();
-          var v1 = new CANNON.Vec3();
-          var v2 = new CANNON.Vec3();
-          for (var xi = 0; xi < shape.data.length - 1; xi++) {
-              for (var yi = 0; yi < shape.data[xi].length - 1; yi++) {
-                  for (var k = 0; k < 2; k++) {
-                      shape.getConvexTrianglePillar(xi, yi, k===0);
-                      v0.copy(shape.pillarConvex.vertices[0]);
-                      v1.copy(shape.pillarConvex.vertices[1]);
-                      v2.copy(shape.pillarConvex.vertices[2]);
-                      v0.vadd(shape.pillarOffset, v0);
-                      v1.vadd(shape.pillarOffset, v1);
-                      v2.vadd(shape.pillarOffset, v2);
-                      geometry.vertices.push(
-                              new THREE.Vector3(v0.x, v0.y, v0.z),
-                              new THREE.Vector3(v1.x, v1.y, v1.z),
-                              new THREE.Vector3(v2.x, v2.y, v2.z)
-                      );
-                      geometry.faceVertexUvs[0].push([
-												new THREE.Vector2(0, 1),
-												new THREE.Vector2(0, 0),
-												new THREE.Vector2(1, 1)
-											]);
-                      var i = geometry.vertices.length - 3;
-                      geometry.faces.push(new THREE.Face3(i, i+1, i+2));
-                  }
-              }
-          }
-          geometry.computeBoundingSphere();
-          geometry.computeFaceNormals();
-          var mesh = new THREE.Mesh(geometry, material);
-          mesh.receiveShadow = true;
-          mesh.castShadow = true;
-          if(mesh.children){
-              for(var i=0; i<mesh.children.length; i++){
-                  mesh.children[i].castShadow = true;
-                  mesh.children[i].receiveShadow = true;
-                  if(mesh.children[i]){
-                      for(var j=0; j<mesh.children[i].length; j++){
-                          mesh.children[i].children[j].castShadow = true;
-                          mesh.children[i].children[j].receiveShadow = true;
-                      }
-                  }
-              }
-          }
-          viewGround.add(mesh);
-      }
-      viewGround.position.copy(phyGround.position);
-      viewGround.quaternion.copy(phyGround.quaternion);
-      scene.add(viewGround);
-
-      /*
-       * ライトの設定
-      */
-      var light = new THREE.SpotLight(0xffffff);
-      light.position.set(200, 500, 200);
-      light.castShadow = true;
-      light.shadowMapWidth = 1024;
-      light.shadowMapHeight = 1024;
-      light.shadowCameraNear = 500;
-      light.shadowCameraFar = 4000;
-      light.shadowCameraFov = 30;
-      scene.add(light);
-      var pointhelper = new THREE.PointLightHelper(light, 1);
-      scene.add(pointhelper);
+			/* 
+			 * シーンの作成
+			*/
+			scene = new THREE.Scene();
 
 			/*
-			 * キューブ
+			 * ライトの設定
+			*/
+			var light = new THREE.SpotLight(0xffffff);
+			light.position.set(200, 500, 200);
+			light.castShadow = true;
+			light.shadowMapWidth = 2048;
+			light.shadowMapHeight = 2048;
+			light.shadowCameraNear = 500;
+			light.shadowCameraFar = 4000;
+			light.shadowCameraFov = 30;
+			scene.add(light);
+
+			/*
+			 * オブジェクト[地面]の作成
+			*/
+			var texture = THREE.ImageUtils.loadTexture( "./images/plane.png");// 画像の読み込み
+			var material = new THREE.MeshBasicMaterial({map: texture});
+			var viewGround = new THREE.Object3D();
+			for (var l = 0; l < phyGround.shapes.length; l++) {
+				var shape = phyGround.shapes[l];
+				var geometry = new THREE.Geometry();
+				var v0 = new CANNON.Vec3();
+				var v1 = new CANNON.Vec3();
+				var v2 = new CANNON.Vec3();
+				for (var xi = 0; xi < shape.data.length - 1; xi++) {
+					for (var yi = 0; yi < shape.data[xi].length - 1; yi++) {
+						for (var k = 0; k < 2; k++) {
+							shape.getConvexTrianglePillar(xi, yi, k===0);
+							v0.copy(shape.pillarConvex.vertices[0]);
+							v1.copy(shape.pillarConvex.vertices[1]);
+							v2.copy(shape.pillarConvex.vertices[2]);
+							v0.vadd(shape.pillarOffset, v0);
+							v1.vadd(shape.pillarOffset, v1);
+							v2.vadd(shape.pillarOffset, v2);
+							geometry.vertices.push(
+								new THREE.Vector3(v0.x, v0.y, v0.z),
+								new THREE.Vector3(v1.x, v1.y, v1.z),
+								new THREE.Vector3(v2.x, v2.y, v2.z)
+							);
+							geometry.faceVertexUvs[0].push([
+								new THREE.Vector2(0, 1),
+								new THREE.Vector2(0, 0),
+								new THREE.Vector2(1, 1)
+							]);
+							var i = geometry.vertices.length - 3;
+							geometry.faces.push(new THREE.Face3(i, i+1, i+2));
+						}
+					}
+				}
+				geometry.computeBoundingSphere();
+				geometry.computeFaceNormals();
+				var mesh = new THREE.Mesh(geometry, material);
+				mesh.receiveShadow = true;
+				mesh.castShadow = true;
+				if(mesh.children){
+					for(var i=0; i<mesh.children.length; i++){
+						mesh.children[i].castShadow = true;
+						mesh.children[i].receiveShadow = true;
+						if(mesh.children[i]){
+							for(var j=0; j<mesh.children[i].length; j++){
+								mesh.children[i].children[j].castShadow = true;
+								mesh.children[i].children[j].receiveShadow = true;
+							}
+						}
+					}
+				}
+				viewGround.add(mesh);
+			}
+			viewGround.position.copy(phyGround.position);
+			viewGround.quaternion.copy(phyGround.quaternion);
+			scene.add(viewGround);
+
+			/*
+			 * オブジェクト[キューブ]の作成
 			*/
 			var cubeGeo,cubeMaterial,cubeMesh,
 					cubeTexture = THREE.ImageUtils.loadTexture( "./images/cube.png");// 画像の読み込み
@@ -209,16 +214,19 @@
 			for(var i = 0;i < 9;i++){
 				cubeMeshItem.rotation.z = cubeData[i].quaternion.z;
 				cubeMeshItem.position.set( cubeData[i].position.x, cubeData[i].position.y, cubeData[i].position.z );
-				cubeMeshItem.castShadow = true;
 				THREE.GeometryUtils.merge(cubeGeo, cubeMeshItem);
 			}
 			cubeMaterial = new THREE.MeshLambertMaterial({map: cubeTexture});// マテリアルの作成
 			cubeMesh = new THREE.Mesh( cubeGeo, cubeMaterial );// メッシュの作成
+			cubeMesh.castShadow = true;
 			scene.add( cubeMesh );// メッシュをシーンに追加
 
+			/*
+			 * レンダラー
+			*/
 			renderer = new THREE.WebGLRenderer({antialias:true});// レンダラーの作成
 			renderer.setSize( width, height );// 描画サイズ
-			renderer.setClearColor( 0xABABAB );// 描画カラー
+			renderer.setClearColor( 0x2b2b2b );// 描画カラー
 			renderer.shadowMapEnabled = true;
 			canvas.appendChild( renderer.domElement );// canvasに描画コンテンツを追加
 			render();// 描画
@@ -237,6 +245,10 @@
 			scene.add( sphereMesh );
 			return sphereMesh;
 		}
+		/**
+		 * rendaring animation
+		 * @return undefined
+		*/
 		function animate() {
 			requestAnimationFrame(animate);
 			world.step(1 / 60);// 物理エンジンの時間を進める
